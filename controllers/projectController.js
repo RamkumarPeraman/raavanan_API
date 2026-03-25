@@ -1,0 +1,242 @@
+const Project = require("../models/Project");
+
+const PROJECT_FIELDS = [
+  "title",
+  "description",
+  "longDescription",
+  "image",
+  "gallery",
+  "status",
+  "category",
+  "progress",
+  "goal",
+  "raised",
+  "location",
+  "statesCovered",
+  "startDate",
+  "endDate",
+  "impact",
+  "livesImpacted",
+  "volunteersEngaged",
+  "objectives",
+  "achievements",
+  "partners",
+  "funding",
+  "reportUrl",
+  "featured",
+];
+
+const toNumberOrDefault = (value, fallback = 0) => {
+  if (value === "" || value === null || value === undefined) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const toDateOrUndefined = (value) => {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  return value;
+};
+
+const sanitizeProjectPayload = (payload = {}, { isUpdate = false } = {}) => {
+  const sanitized = {};
+
+  for (const field of PROJECT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      sanitized[field] = payload[field];
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "progress")) {
+    sanitized.progress = toNumberOrDefault(sanitized.progress, 0);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "goal")) {
+    sanitized.goal = toNumberOrDefault(sanitized.goal, 0);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "raised")) {
+    sanitized.raised = toNumberOrDefault(sanitized.raised, 0);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "livesImpacted")) {
+    sanitized.livesImpacted = toNumberOrDefault(sanitized.livesImpacted, 0);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "volunteersEngaged")) {
+    sanitized.volunteersEngaged = toNumberOrDefault(sanitized.volunteersEngaged, 0);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "impact")) {
+    sanitized.impact = Object.fromEntries(
+      Object.entries(sanitized.impact || {})
+        .filter(([key]) => key)
+        .map(([key, value]) => [key, toNumberOrDefault(value, 0)])
+    );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "startDate")) {
+    sanitized.startDate = toDateOrUndefined(sanitized.startDate);
+    if (isUpdate && sanitized.startDate === undefined) {
+      sanitized.$unset = { ...(sanitized.$unset || {}), startDate: 1 };
+      delete sanitized.startDate;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "endDate")) {
+    sanitized.endDate = toDateOrUndefined(sanitized.endDate);
+    if (isUpdate && sanitized.endDate === undefined) {
+      sanitized.$unset = { ...(sanitized.$unset || {}), endDate: 1 };
+      delete sanitized.endDate;
+    }
+  }
+
+  return sanitized;
+};
+
+const serializeProject = (project) => {
+  const data = project.toObject ? project.toObject() : project;
+
+  return {
+    ...data,
+    id: String(data._id),
+    impact: data.impact instanceof Map ? Object.fromEntries(data.impact) : data.impact || {},
+  };
+};
+
+const buildProjectQuery = ({ category, status, search }) => {
+  const query = {};
+
+  if (category && category !== "all") {
+    query.category = new RegExp(`^${category}$`, "i");
+  }
+
+  if (status && status !== "all") {
+    query.status = status;
+  }
+
+  if (search) {
+    query.$or = [
+      { title: { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } },
+      { longDescription: { $regex: search, $options: "i" } },
+      { location: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  return query;
+};
+
+const listProjects = async (req, res) => {
+  const projects = await Project.find(buildProjectQuery(req.query)).sort({ createdAt: -1 }).lean();
+
+  return res.json({
+    success: true,
+    data: projects.map(serializeProject),
+  });
+};
+
+const getProjectById = async (req, res) => {
+  const project = await Project.findById(req.params.id).lean();
+
+  if (!project) {
+    return res.status(404).json({ success: false, message: "Project not found." });
+  }
+
+  return res.json({ success: true, data: serializeProject(project) });
+};
+
+const getProjectMetrics = async (req, res) => {
+  const projects = await Project.find().lean();
+
+  const statesReached = new Set();
+  let ongoingProjects = 0;
+  let completedProjects = 0;
+  let livesImpacted = 0;
+  let volunteersEngaged = 0;
+
+  for (const project of projects) {
+    if (project.status === "ongoing") {
+      ongoingProjects += 1;
+    }
+
+    if (project.status === "completed") {
+      completedProjects += 1;
+    }
+
+    livesImpacted += Number(project.livesImpacted || 0);
+    volunteersEngaged += Number(project.volunteersEngaged || 0);
+
+    for (const state of project.statesCovered || []) {
+      if (state) {
+        statesReached.add(state);
+      }
+    }
+  }
+
+  return res.json({
+    success: true,
+    data: {
+      totalProjects: projects.length,
+      ongoingProjects,
+      completedProjects,
+      livesImpacted,
+      volunteersEngaged,
+      statesReached: statesReached.size,
+    },
+  });
+};
+
+const createProject = async (req, res) => {
+  const project = await Project.create(sanitizeProjectPayload(req.body));
+
+  return res.status(201).json({
+    success: true,
+    message: "Project created successfully.",
+    data: serializeProject(project),
+  });
+};
+
+const updateProject = async (req, res) => {
+  const payload = sanitizeProjectPayload(req.body, { isUpdate: true });
+
+  const project = await Project.findByIdAndUpdate(req.params.id, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!project) {
+    return res.status(404).json({ success: false, message: "Project not found." });
+  }
+
+  return res.json({
+    success: true,
+    message: "Project updated successfully.",
+    data: serializeProject(project),
+  });
+};
+
+const deleteProject = async (req, res) => {
+  const project = await Project.findByIdAndDelete(req.params.id);
+
+  if (!project) {
+    return res.status(404).json({ success: false, message: "Project not found." });
+  }
+
+  return res.json({ success: true, message: "Project deleted successfully." });
+};
+
+module.exports = {
+  serializeProject,
+  listProjects,
+  getProjectById,
+  getProjectMetrics,
+  createProject,
+  updateProject,
+  deleteProject,
+};
