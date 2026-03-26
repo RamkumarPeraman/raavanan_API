@@ -21,6 +21,27 @@ const authenticate = (req, res, next) => {
   }
 };
 
+const optionalAuthenticate = (req, res, next) => {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET || "raavanan-dev-secret");
+    req.user = {
+      ...payload,
+      role: normalizeRole(payload.role),
+    };
+  } catch (error) {
+    req.user = null;
+  }
+
+  return next();
+};
+
 const authorize = (...roles) => (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: "Authentication required." });
@@ -35,4 +56,4 @@ const authorize = (...roles) => (req, res, next) => {
   return next();
 };
 
-module.exports = { authenticate, authorize };
+module.exports = { authenticate, optionalAuthenticate, authorize };

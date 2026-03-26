@@ -14,6 +14,8 @@ const eventRoutes = require("./routes/events");
 const blogRoutes = require("./routes/blogs");
 const reportRoutes = require("./routes/reports");
 const volunteerOpportunityRoutes = require("./routes/volunteerOpportunities");
+const chatbotRoutes = require("./routes/chatbot");
+const messengerRoutes = require("./routes/messenger");
 const { store } = require("./data/store");
 const { projectSeeds } = require("./data/projectSeeds");
 const { eventSeeds, blogSeeds, volunteerOpportunitySeeds, reportSeeds } = require("./data/contentSeeds");
@@ -64,6 +66,8 @@ app.use("/api/events", eventRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/volunteer-opportunities", volunteerOpportunityRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/messenger", messengerRoutes);
 app.get("/api/testimonials", (req, res) => res.json({ success: true, data: store.testimonials }));
 app.get("/api/merchandise", (req, res) => res.json({ success: true, data: store.merchandise }));
 

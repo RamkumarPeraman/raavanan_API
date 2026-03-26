@@ -232,6 +232,7 @@ const deleteProject = async (req, res) => {
 };
 
 module.exports = {
+  sanitizeProjectPayload,
   serializeProject,
   listProjects,
   getProjectById,
