@@ -21,6 +21,16 @@ const canManageGroup = (conversation, currentUser) =>
 const conversationHasUser = (conversation, userId) =>
   conversation.participants.some((participant) => String(participant.user?._id || participant.user) === String(userId));
 
+const createMissingUserPlaceholder = (userId) => ({
+  id: userId ? String(userId) : null,
+  name: "Deleted user",
+  email: "",
+  role: "member",
+  profileImage: null,
+  lastActive: null,
+  isDeleted: true,
+});
+
 const formatConversation = async (conversation, currentUserId) => {
   const populatedConversation =
     typeof conversation.populate === "function"
@@ -53,10 +63,10 @@ const formatConversation = async (conversation, currentUserId) => {
     name:
       conversationObject.type === "group"
         ? conversationObject.name
-        : otherParticipants.map((participant) => participant.name).join(", "),
+        : otherParticipants.map((participant) => participant.name || "Deleted user").join(", ") || "Deleted user",
     participants: conversationObject.participants.map((participant) => ({
       ...participant,
-      user: sanitizeUser(participant.user),
+      user: sanitizeUser(participant.user) || createMissingUserPlaceholder(participant.user),
     })),
     createdBy: conversationObject.createdBy?.toString?.() || conversationObject.createdBy,
     unreadCount,
@@ -75,7 +85,7 @@ const formatMessage = (message) => {
   return {
     id: messageObject._id.toString(),
     conversationId: messageObject.conversation?.toString?.() || messageObject.conversation,
-    sender: sanitizeUser(messageObject.sender),
+    sender: sanitizeUser(messageObject.sender) || createMissingUserPlaceholder(messageObject.sender),
     content: messageObject.content,
     createdAt: messageObject.createdAt,
     updatedAt: messageObject.updatedAt,

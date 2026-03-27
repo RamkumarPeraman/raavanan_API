@@ -38,6 +38,10 @@ const normalizeRole = (role) => {
 };
 
 const sanitizeUser = (userDocument) => {
+  if (!userDocument) {
+    return null;
+  }
+
   const user = typeof userDocument.toObject === "function" ? userDocument.toObject() : { ...userDocument };
   const { passwordHash, __v, _id, ...safeUser } = user;
 
