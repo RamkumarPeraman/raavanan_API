@@ -16,6 +16,7 @@ const reportRoutes = require("./routes/reports");
 const volunteerOpportunityRoutes = require("./routes/volunteerOpportunities");
 const chatbotRoutes = require("./routes/chatbot");
 const messengerRoutes = require("./routes/messenger");
+const roleRoutes = require("./routes/roles");
 const { store } = require("./data/store");
 const { projectSeeds } = require("./data/projectSeeds");
 const { eventSeeds, blogSeeds, volunteerOpportunitySeeds, reportSeeds } = require("./data/contentSeeds");
@@ -26,6 +27,7 @@ const Event = require("./models/Event");
 const Blog = require("./models/Blog");
 const Report = require("./models/Report");
 const VolunteerOpportunity = require("./models/VolunteerOpportunity");
+const Role = require("./models/Role");
 const bcrypt = require("bcryptjs");
 const { createMembershipId, resolveMembershipType } = require("./utils/userHelpers");
 
@@ -68,6 +70,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/volunteer-opportunities", volunteerOpportunityRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/messenger", messengerRoutes);
+app.use("/api/roles", roleRoutes);
 app.get("/api/testimonials", (req, res) => res.json({ success: true, data: store.testimonials }));
 app.get("/api/merchandise", (req, res) => res.json({ success: true, data: store.merchandise }));
 
@@ -154,12 +157,101 @@ const seedCollection = async (Model, seedData) => {
   await Model.insertMany(seedData);
 };
 
+const seedRoles = async () => {
+  const existingCount = await Role.countDocuments();
+  if (existingCount > 0) return;
+
+  const systemRoles = [
+    {
+      name: "super_admin",
+      displayName: "Super Admin",
+      description: "Full system access with no restrictions.",
+      permissions: Role.AVAILABLE_PERMISSIONS,
+      isSystem: true,
+      color: "#7c3aed",
+    },
+    {
+      name: "admin",
+      displayName: "Administrator",
+      description: "Administrative access to manage users, content, and operations.",
+      permissions: [
+        "users:read", "users:write",
+        "roles:read",
+        "volunteers:read", "volunteers:write",
+        "projects:read", "projects:write",
+        "events:read", "events:write",
+        "blogs:read", "blogs:write",
+        "donations:read",
+        "reports:read", "reports:write",
+        "services:read", "services:write",
+      ],
+      isSystem: true,
+      color: "#0d9488",
+    },
+    {
+      name: "manager",
+      displayName: "Manager",
+      description: "Manages projects, events, and program operations.",
+      permissions: [
+        "projects:read", "projects:write",
+        "events:read", "events:write",
+        "blogs:read", "blogs:write",
+        "reports:read",
+        "volunteers:read",
+        "services:read",
+      ],
+      isSystem: true,
+      color: "#2563eb",
+    },
+    {
+      name: "volunteer_coordinator",
+      displayName: "Volunteer Coordinator",
+      description: "Coordinates volunteer activities and manages volunteer data.",
+      permissions: [
+        "volunteers:read", "volunteers:write",
+        "events:read",
+        "projects:read",
+        "reports:read",
+      ],
+      isSystem: true,
+      color: "#d97706",
+    },
+    {
+      name: "volunteer",
+      displayName: "Volunteer",
+      description: "Active volunteer with access to volunteer portal.",
+      permissions: ["events:read", "projects:read", "services:read"],
+      isSystem: true,
+      color: "#059669",
+    },
+    {
+      name: "member",
+      displayName: "Member",
+      description: "Regular NGO member with standard access.",
+      permissions: ["events:read", "projects:read", "blogs:read", "services:read"],
+      isSystem: true,
+      color: "#64748b",
+    },
+    {
+      name: "donor",
+      displayName: "Donor",
+      description: "Donor with access to donation history and reports.",
+      permissions: ["donations:read", "projects:read", "reports:read", "events:read"],
+      isSystem: true,
+      color: "#db2777",
+    },
+  ];
+
+  await Role.insertMany(systemRoles);
+};
+
 const startServer = async () => {
   if (!process.env.MONGODB_URI) {
     throw new Error("MONGODB_URI is required.");
   }
 
   await connectDB();
+  await seedRoles();
   await seedUsers();
   await seedProjects();
   await seedCollection(Event, eventSeeds);
