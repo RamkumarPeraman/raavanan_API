@@ -15,6 +15,12 @@ const listDonations = async (req, res) => {
   if (req.query.status && req.query.status !== "all") {
     query.paymentStatus = req.query.status;
   }
+  if (req.query.type && req.query.type !== "all") {
+    query.type = req.query.type;
+  }
+  if (req.query.project && req.query.project !== "all") {
+    query.project = req.query.project;
+  }
 
   const donations = await Donation.find(query).sort({ createdAt: -1 }).lean();
 
@@ -47,6 +53,9 @@ const createDonation = async (req, res) => {
     pincode: req.body.pincode || "",
     pan: req.body.pan || "",
     anonymous: Boolean(req.body.anonymous),
+    transactionId: req.body.transactionId || "",
+    paymentScreenshot: req.body.paymentScreenshot || "",
+    message: req.body.message || "",
   });
 
   return res.status(201).json({

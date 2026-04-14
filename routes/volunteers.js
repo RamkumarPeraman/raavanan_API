@@ -6,6 +6,7 @@ const {
   registerVolunteer,
   volunteerLogin,
   updateVolunteerStatus,
+  deleteVolunteer,
 } = require("../controllers/volunteerController");
 const { authenticate, authorize } = require("../middleware/auth");
 const { handleValidation } = require("../middleware/validation");
@@ -44,6 +45,8 @@ router.put(
   ],
   updateVolunteerStatus
 );
+
+router.delete("/:id", authenticate, authorize("ADMIN", "SUPER_ADMIN"), deleteVolunteer);
 
 module.exports = router;
 

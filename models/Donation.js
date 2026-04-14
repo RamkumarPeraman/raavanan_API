@@ -9,14 +9,21 @@ const DonationSchema = new mongoose.Schema(
     type: { type: String, enum: ["one-time", "monthly"], default: "one-time" },
     project: { type: String, default: "general" },
     paymentMethod: { type: String, default: "upi" },
-    paymentStatus: { type: String, enum: ["pending", "completed", "failed"], default: "pending" },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "accepted", "rejected", "completed", "failed"],
+      default: "pending",
+    },
     address: { type: String, default: "" },
     city: { type: String, default: "" },
     state: { type: String, default: "" },
     pincode: { type: String, default: "" },
     pan: { type: String, default: "" },
     anonymous: { type: Boolean, default: false },
-    paymentId: { type: String, default: "" }
+    paymentId: { type: String, default: "" },
+    transactionId: { type: String, default: "" },
+    paymentScreenshot: { type: String, default: "" }, // base64
+    message: { type: String, default: "" },
   },
   { timestamps: true }
 );

@@ -56,14 +56,14 @@ const blogSeeds = [
 
 const volunteerOpportunitySeeds = [
   {
-    title: "Evening Tutor for Underprivileged Children",
-    location: "Chennai - Multiple Centers",
-    commitment: "2-3 hours/week",
-    category: "Education",
-    description: "Help children with homework and teach basic subjects in evening study centers.",
-    requirements: ["Good communication skills", "Patience with children", "Basic math and language skills"],
-    spots: 5,
-    image: "/assets/volunteer/tutoring.jpg",
+    title: "Vidiyal Membership Drive",
+    location: "Tamil Nadu",
+    commitment: "Flexible",
+    category: "Membership Drive 2026 Season 1",
+    description: "தோன்றின் புகழொடு தோன்றுக\nவிடியல் – Membership Drive 2025\n\nOrganized by Raavana Thalaigal Trust – Tamil Nadu\n\n🗓️ Application Period: April 15 – April 30\n📍 Review & Selection: May 1 – May 7\n📞 Selected Applicants Notified via Email & Phone\n\n📌 About the Drive:\nThe \"விடியல் – Membership Drive\" is a dynamic initiative by the Raavana Thalaigal Trust, designed to empower individuals committed to revolution, learning, growth, and social service. We invite you to join us on a transformative journey where we learn, grow, network, and serve together. Our mission is to bring change not just through activism but by empowering individuals who will take on roles of leadership and service within their communities.\n\nThis drive is not only about social justice but also about creating opportunities for personal development, expanding your network, and making a tangible impact through dedicated social service.",
+    requirements: ["Commitment to social service", "Willingness to learn and grow", "Active participation in community initiatives"],
+    spots: 100,
+    image: "/assets/volunteer/membership.jpg",
     status: "active",
   },
   {

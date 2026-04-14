@@ -64,6 +64,14 @@ const sanitizeVolunteerPayload = (payload = {}, { isUpdate = false } = {}) => {
     sanitized.skills = toArray(sanitized.skills);
   }
 
+  if (Object.prototype.hasOwnProperty.call(sanitized, "hearAbout")) {
+    if (Array.isArray(sanitized.hearAbout)) {
+      sanitized.hearAbout = sanitized.hearAbout.filter(Boolean).join(", ");
+    } else if (typeof sanitized.hearAbout === "string") {
+      sanitized.hearAbout = sanitized.hearAbout.trim();
+    }
+  }
+
   if (Object.prototype.hasOwnProperty.call(sanitized, "availability")) {
     sanitized.availability =
       sanitized.availability && typeof sanitized.availability === "object" && !Array.isArray(sanitized.availability)
@@ -99,115 +107,155 @@ const serializeVolunteer = (volunteer) => {
 };
 
 const listVolunteers = async (req, res) => {
-  const query = {};
+  try {
+    const query = {};
 
-  if (req.query.status && req.query.status !== "all") {
-    query.status = req.query.status;
+    if (req.query.status && req.query.status !== "all") {
+      query.status = req.query.status;
+    }
+
+    if (req.query.search) {
+      query.$or = [
+        { fullName: { $regex: req.query.search, $options: "i" } },
+        { email: { $regex: req.query.search, $options: "i" } },
+        { phone: { $regex: req.query.search, $options: "i" } },
+        { city: { $regex: req.query.search, $options: "i" } },
+        { state: { $regex: req.query.search, $options: "i" } },
+      ];
+    }
+
+    const volunteers = await Volunteer.find(query).sort({ createdAt: -1 }).lean();
+
+    return res.json({
+      success: true,
+      data: volunteers.map(serializeVolunteer),
+    });
+  } catch (error) {
+    console.error("Error listing volunteers:", error);
+    return res.status(500).json({ success: false, message: "Failed to list volunteers." });
   }
-
-  if (req.query.search) {
-    query.$or = [
-      { fullName: { $regex: req.query.search, $options: "i" } },
-      { email: { $regex: req.query.search, $options: "i" } },
-      { phone: { $regex: req.query.search, $options: "i" } },
-      { city: { $regex: req.query.search, $options: "i" } },
-      { state: { $regex: req.query.search, $options: "i" } },
-    ];
-  }
-
-  const volunteers = await Volunteer.find(query).sort({ createdAt: -1 }).lean();
-
-  return res.json({
-    success: true,
-    data: volunteers.map(serializeVolunteer),
-  });
 };
 
 const getVolunteerById = async (req, res) => {
-  const volunteer = await Volunteer.findById(req.params.id).lean();
+  try {
+    const volunteer = await Volunteer.findById(req.params.id).lean();
 
-  if (!volunteer) {
-    return res.status(404).json({ success: false, message: "Volunteer not found." });
+    if (!volunteer) {
+      return res.status(404).json({ success: false, message: "Volunteer not found." });
+    }
+
+    return res.json({ success: true, data: serializeVolunteer(volunteer) });
+  } catch (error) {
+    console.error("Error getting volunteer:", error);
+    return res.status(500).json({ success: false, message: "Failed to get volunteer." });
   }
-
-  return res.json({ success: true, data: serializeVolunteer(volunteer) });
 };
 
 const registerVolunteer = async (req, res) => {
-  const email = String(req.body.email || "").trim().toLowerCase();
-  const existingVolunteer = await Volunteer.findOne({ email }).lean();
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const existingVolunteer = await Volunteer.findOne({ email }).lean();
 
-  if (existingVolunteer) {
-    return res.status(409).json({ success: false, message: "Volunteer already registered with this email." });
+    if (existingVolunteer) {
+      return res.status(409).json({ success: false, message: "Volunteer already registered with this email." });
+    }
+
+    const volunteerPayload = sanitizeVolunteerPayload({ ...req.body, email }, { isUpdate: false });
+    volunteerPayload.passwordHash = await bcrypt.hash(req.body.password || "volunteer123", 10);
+
+    const volunteer = await Volunteer.create(volunteerPayload);
+
+    return res.status(201).json({
+      success: true,
+      volunteerId: String(volunteer._id),
+      message: "Volunteer registration submitted successfully.",
+      data: serializeVolunteer(volunteer),
+    });
+  } catch (error) {
+    console.error("Error registering volunteer:", error.message, error.stack);
+    return res.status(500).json({ success: false, message: "Failed to register volunteer.", error: error.message });
   }
-
-  const volunteerPayload = sanitizeVolunteerPayload({ ...req.body, email }, { isUpdate: false });
-  volunteerPayload.passwordHash = await bcrypt.hash(req.body.password || "volunteer123", 10);
-
-  const volunteer = await Volunteer.create(volunteerPayload);
-
-  return res.status(201).json({
-    success: true,
-    volunteerId: String(volunteer._id),
-    message: "Volunteer registration submitted successfully.",
-    data: serializeVolunteer(volunteer),
-  });
 };
 
 const volunteerLogin = async (req, res) => {
-  const email = String(req.body.email || "").trim().toLowerCase();
-  const volunteer = await Volunteer.findOne({ email }).select("+passwordHash");
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const volunteer = await Volunteer.findOne({ email }).select("+passwordHash");
 
-  if (!volunteer) {
-    return res.status(401).json({ success: false, message: "Invalid email or password." });
+    if (!volunteer) {
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    }
+
+    const passwordMatches = await bcrypt.compare(req.body.password || "", volunteer.passwordHash);
+
+    if (!passwordMatches) {
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    }
+
+    const token = jwt.sign(
+      { id: String(volunteer._id), email: volunteer.email, role: "volunteer" },
+      process.env.JWT_SECRET || "raavanan-dev-secret",
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: String(volunteer._id),
+        name: volunteer.fullName,
+        email: volunteer.email,
+        role: "volunteer",
+        status: volunteer.status,
+      },
+    });
+  } catch (error) {
+    console.error("Error during volunteer login:", error);
+    return res.status(500).json({ success: false, message: "Login failed." });
   }
-
-  const passwordMatches = await bcrypt.compare(req.body.password || "", volunteer.passwordHash);
-
-  if (!passwordMatches) {
-    return res.status(401).json({ success: false, message: "Invalid email or password." });
-  }
-
-  const token = jwt.sign(
-    { id: String(volunteer._id), email: volunteer.email, role: "volunteer" },
-    process.env.JWT_SECRET || "raavanan-dev-secret",
-    { expiresIn: "7d" }
-  );
-
-  return res.json({
-    success: true,
-    token,
-    user: {
-      id: String(volunteer._id),
-      name: volunteer.fullName,
-      email: volunteer.email,
-      role: "volunteer",
-      status: volunteer.status,
-    },
-  });
 };
 
 const updateVolunteerStatus = async (req, res) => {
-  const update = {};
+  try {
+    const update = {};
 
-  if (req.body.status) {
-    update.status = req.body.status;
+    if (req.body.status) {
+      update.status = req.body.status;
+    }
+
+    const volunteer = await Volunteer.findByIdAndUpdate(req.params.id, update, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!volunteer) {
+      return res.status(404).json({ success: false, message: "Volunteer not found." });
+    }
+
+    return res.json({
+      success: true,
+      message: "Volunteer status updated successfully.",
+      data: { id: String(volunteer._id), status: volunteer.status },
+    });
+  } catch (error) {
+    console.error("Error updating volunteer status:", error);
+    return res.status(500).json({ success: false, message: "Failed to update volunteer status." });
   }
+};
 
-  const volunteer = await Volunteer.findByIdAndUpdate(req.params.id, update, {
-    new: true,
-    runValidators: true,
-  });
+const deleteVolunteer = async (req, res) => {
+  try {
+    const volunteer = await Volunteer.findByIdAndDelete(req.params.id);
 
-  if (!volunteer) {
-    return res.status(404).json({ success: false, message: "Volunteer not found." });
+    if (!volunteer) {
+      return res.status(404).json({ success: false, message: "Volunteer not found." });
+    }
+
+    return res.json({ success: true, message: "Volunteer deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting volunteer:", error);
+    return res.status(500).json({ success: false, message: "Failed to delete volunteer." });
   }
-
-  return res.json({
-    success: true,
-    message: "Volunteer status updated successfully.",
-    data: { id: String(volunteer._id), status: volunteer.status },
-  });
 };
 
 module.exports = {
@@ -216,4 +264,5 @@ module.exports = {
   registerVolunteer,
   volunteerLogin,
   updateVolunteerStatus,
+  deleteVolunteer,
 };
