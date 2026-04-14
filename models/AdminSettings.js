@@ -1,5 +1,18 @@
 const mongoose = require("mongoose");
 
+const heroNewsCarouselItemSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    category: { type: String, default: "Latest News" },
+    title: { type: String, default: "" },
+    summary: { type: String, default: "" },
+    image: { type: String, default: "" },
+    link: { type: String, default: "" },
+    buttonLabel: { type: String, default: "Read more" },
+  },
+  { _id: false }
+);
+
 const AdminSettingsSchema = new mongoose.Schema(
   {
     key: { type: String, default: "global", unique: true },
@@ -10,6 +23,10 @@ const AdminSettingsSchema = new mongoose.Schema(
       branch: { type: String, default: "Pattiveeranpatti" },
       accountNo: { type: String, default: "110301563866" },
       ifscCode: { type: String, default: "CNRB0008438" },
+    },
+    heroNewsCarousel: {
+      type: [heroNewsCarouselItemSchema],
+      default: [],
     },
   },
   { timestamps: true }
