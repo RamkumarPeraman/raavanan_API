@@ -5,6 +5,7 @@ const {
   getVolunteerById,
   registerVolunteer,
   volunteerLogin,
+  updateVolunteer,
   updateVolunteerStatus,
   deleteVolunteer,
 } = require("../controllers/volunteerController");
@@ -15,6 +16,7 @@ const router = express.Router();
 
 router.get("/", authenticate, authorize("ADMIN", "SUPER_ADMIN"), listVolunteers);
 router.get("/:id", authenticate, authorize("ADMIN", "SUPER_ADMIN"), getVolunteerById);
+router.put("/:id", authenticate, authorize("ADMIN", "SUPER_ADMIN"), updateVolunteer);
 router.post(
   "/register",
   [
@@ -49,4 +51,3 @@ router.put(
 router.delete("/:id", authenticate, authorize("ADMIN", "SUPER_ADMIN"), deleteVolunteer);
 
 module.exports = router;
-

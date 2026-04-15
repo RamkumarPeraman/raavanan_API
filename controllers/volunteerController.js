@@ -7,19 +7,38 @@ const VOLUNTEER_FIELDS = [
   "email",
   "phone",
   "address",
+  "gender",
   "city",
   "state",
   "pincode",
   "dateOfBirth",
+  "education",
+  "educationOther",
+  "institution",
   "occupation",
+  "occupationOther",
   "interests",
   "skills",
+  "skillsOther",
+  "capacity",
+  "capacityOther",
   "availability",
   "hoursPerWeek",
   "experience",
   "motivation",
+  "previousVolunteer",
   "emergencyContact",
   "hearAbout",
+  "hearAboutOther",
+  "selectedOpportunityId",
+  "selectedOpportunityTitle",
+  "corePurpose",
+  "newLaw",
+  "viewOnSociety",
+  "leadershipAction",
+  "dailyHabit",
+  "agreeConduct",
+  "agreeDeclaration",
   "status",
 ];
 
@@ -62,6 +81,10 @@ const sanitizeVolunteerPayload = (payload = {}, { isUpdate = false } = {}) => {
 
   if (Object.prototype.hasOwnProperty.call(sanitized, "skills")) {
     sanitized.skills = toArray(sanitized.skills);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(sanitized, "capacity")) {
+    sanitized.capacity = toArray(sanitized.capacity);
   }
 
   if (Object.prototype.hasOwnProperty.call(sanitized, "hearAbout")) {
@@ -243,6 +266,29 @@ const updateVolunteerStatus = async (req, res) => {
   }
 };
 
+const updateVolunteer = async (req, res) => {
+  try {
+    const volunteerPayload = sanitizeVolunteerPayload(req.body, { isUpdate: true });
+    const volunteer = await Volunteer.findByIdAndUpdate(req.params.id, volunteerPayload, {
+      new: true,
+      runValidators: true,
+    }).lean();
+
+    if (!volunteer) {
+      return res.status(404).json({ success: false, message: "Volunteer not found." });
+    }
+
+    return res.json({
+      success: true,
+      message: "Volunteer updated successfully.",
+      data: serializeVolunteer(volunteer),
+    });
+  } catch (error) {
+    console.error("Error updating volunteer:", error);
+    return res.status(500).json({ success: false, message: "Failed to update volunteer." });
+  }
+};
+
 const deleteVolunteer = async (req, res) => {
   try {
     const volunteer = await Volunteer.findByIdAndDelete(req.params.id);
@@ -263,6 +309,7 @@ module.exports = {
   getVolunteerById,
   registerVolunteer,
   volunteerLogin,
+  updateVolunteer,
   updateVolunteerStatus,
   deleteVolunteer,
 };
