@@ -4,8 +4,10 @@ const {
   listDonations,
   getDonationById,
   createDonation,
+  updateDonation,
   updateDonationStatus,
   getDonationStats,
+  deleteDonation,
 } = require("../controllers/donationController");
 const { authenticate, authorize } = require("../middleware/auth");
 const { handleValidation } = require("../middleware/validation");
@@ -26,7 +28,9 @@ router.post(
   ],
   createDonation
 );
-router.put("/:id", authenticate, authorize("ADMIN", "SUPER_ADMIN"), updateDonationStatus);
+router.put("/:id", authenticate, authorize("ADMIN", "SUPER_ADMIN"), updateDonation);
+router.patch("/:id/status", authenticate, authorize("ADMIN", "SUPER_ADMIN"), updateDonationStatus);
+router.delete("/:id", authenticate, authorize("ADMIN", "SUPER_ADMIN"), deleteDonation);
 
 module.exports = router;
 

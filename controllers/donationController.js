@@ -66,6 +66,52 @@ const createDonation = async (req, res) => {
   });
 };
 
+const updateDonation = async (req, res) => {
+  const donation = await Donation.findById(req.params.id);
+
+  if (!donation) {
+    return res.status(404).json({ success: false, message: "Donation not found." });
+  }
+
+  const fields = [
+    "name",
+    "email",
+    "phone",
+    "amount",
+    "type",
+    "project",
+    "paymentMethod",
+    "paymentStatus",
+    "address",
+    "city",
+    "state",
+    "pincode",
+    "pan",
+    "paymentId",
+    "transactionId",
+    "paymentScreenshot",
+    "message",
+  ];
+
+  fields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      donation[field] = field === "amount" ? Number(req.body[field] || 0) : req.body[field];
+    }
+  });
+
+  if (req.body.anonymous !== undefined) {
+    donation.anonymous = Boolean(req.body.anonymous);
+  }
+
+  await donation.save();
+
+  return res.json({
+    success: true,
+    message: "Donation updated successfully.",
+    data: serializeDonation(donation),
+  });
+};
+
 const updateDonationStatus = async (req, res) => {
   const donation = await Donation.findById(req.params.id);
 
@@ -85,6 +131,19 @@ const updateDonationStatus = async (req, res) => {
     success: true,
     message: "Donation updated successfully.",
     data: serializeDonation(donation),
+  });
+};
+
+const deleteDonation = async (req, res) => {
+  const donation = await Donation.findByIdAndDelete(req.params.id);
+
+  if (!donation) {
+    return res.status(404).json({ success: false, message: "Donation not found." });
+  }
+
+  return res.json({
+    success: true,
+    message: "Donation deleted successfully.",
   });
 };
 
@@ -132,6 +191,8 @@ module.exports = {
   listDonations,
   getDonationById,
   createDonation,
+  updateDonation,
   updateDonationStatus,
   getDonationStats,
+  deleteDonation,
 };
